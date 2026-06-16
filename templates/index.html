@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Unity Docs Assistant</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0a0a0a;
+      --surface:   #111111;
+      --border:    #2a2a2a;
+      --unity-blue:#ff6a00;
+      --unity-dim: #2a1500;
+      --text:      #ffffff;
+      --muted:     #888888;
+      --code-bg:   #050505;
+      --radius:    10px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    header {
+      padding: 14px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    .logo {
+      width: 30px; height: 30px;
+      background: #22c55e;
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 13px; color: #000;
+    }
+
+    header h1 { font-size: 15px; font-weight: 600; }
+
+    header span {
+      font-size: 11px;
+      color: var(--muted);
+      margin-left: auto;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ── Input bar ── */
+    #input-area {
+      padding: 14px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      flex-shrink: 0;
+    }
+
+    #question {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      padding: 10px 14px;
+      resize: none;
+      min-height: 42px;
+      max-height: 120px;
+      line-height: 1.5;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    #question:focus { border-color: var(--unity-blue); }
+    #question::placeholder { color: var(--muted); }
+
+    #send {
+      background: #22c55e;
+      color: #000;
+      border: none;
+      border-radius: var(--radius);
+      padding: 10px 18px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      height: 42px;
+      flex-shrink: 0;
+      transition: opacity 0.2s;
+    }
+    #send:hover    { opacity: 0.85; }
+    #send:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── Three panels ── */
+    #panels {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 0;
+      overflow: hidden;
+    }
+
+    .panel {
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .panel:last-child { border-right: none; }
+
+    .panel-header {
+      padding: 10px 16px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .panel-icon {
+      width: 22px; height: 22px;
+      border-radius: 5px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px;
+    }
+
+    .panel-overview .panel-icon  { background: #2a1500; color: #ff6a00; }
+    .panel-code     .panel-icon  { background: #1a1a1a; color: #ff6a00; }
+    .panel-directory .panel-icon { background: #2a1500; color: #ff6a00; }
+
+    .panel-header h2 {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: #ffffff;
+    }
+
+    .panel-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 18px;
+      font-size: 13.5px;
+      line-height: 1.7;
+    }
+
+    /* Empty state per panel */
+    .panel-empty {
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+      margin: auto;
+      padding: 40px 20px;
+    }
+
+    /* Overview text */
+    .panel-overview .panel-body { color: var(--text); }
+
+    /* Code panel */
+    .panel-code .panel-body {
+      padding: 0;
+    }
+
+    .panel-code pre {
+      margin: 0;
+      padding: 18px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12.5px;
+      line-height: 1.7;
+      background: var(--code-bg);
+      color: #ff9a40;
+      height: 100%;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    /* Directory panel */
+    .panel-directory .panel-body { color: var(--text); }
+
+    .dir-path {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: #ff6a00;
+      margin-bottom: 10px;
+      line-height: 1.6;
+    }
+
+    /* Loading dots */
+    .typing-dot {
+      display: inline-block;
+      width: 6px; height: 6px;
+      background: var(--unity-blue);
+      border-radius: 50%;
+      animation: blink 1.2s infinite;
+      margin: 0 2px;
+    }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes blink {
+      0%, 80%, 100% { opacity: 0.2; }
+      40%            { opacity: 1; }
+    }
+
+    .loading-msg {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Unity Docs Assistant</h1>
+  <span>llama3.2 · local</span>
+</header>
+
+<div id="input-area">
+  <textarea id="question" placeholder="Ask a Unity question… (Enter to send)" rows="1"></textarea>
+  <button id="send">Ask</button>
+</div>
+
+<div id="panels">
+
+  <!-- Overview -->
+  <div class="panel panel-overview">
+    <div class="panel-header">
+      <div class="panel-icon">📋</div>
+      <h2>Overview</h2>
+    </div>
+    <div class="panel-body" id="overview-body">
+      <div class="panel-empty">Ask a question to see an overview here.</div>
+    </div>
+  </div>
+
+  <!-- Code -->
+  <div class="panel panel-code">
+    <div class="panel-header">
+      <div class="panel-icon">&lt;/&gt;</div>
+      <h2>Sample Code</h2>
+    </div>
+    <div class="panel-body" id="code-body">
+      <pre id="code-pre" style="color:var(--muted); background:var(--code-bg); padding:18px; margin:0; height:100%;">// Code example will appear here</pre>
+    </div>
+  </div>
+
+  <!-- Directory -->
+  <div class="panel panel-directory">
+    <div class="panel-header">
+      <div class="panel-icon">📁</div>
+      <h2>Docs Directory</h2>
+    </div>
+    <div class="panel-body" id="dir-body">
+      <div class="panel-empty">Doc paths will appear here.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const input   = document.getElementById('question');
+  const sendBtn = document.getElementById('send');
+
+  input.addEventListener('input', () => {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
+  });
+
+  sendBtn.addEventListener('click', submit);
+
+  function setLoading() {
+    const dots = `<div class="loading-msg"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>`;
+    document.getElementById('overview-body').innerHTML = dots;
+    document.getElementById('code-body').innerHTML = `<pre style="color:var(--muted);background:var(--code-bg);padding:18px;margin:0;height:100%;">Generating…</pre>`;
+    document.getElementById('dir-body').innerHTML = dots;
+  }
+
+  function unescape(str) {
+    // Convert literal \n \t \r sequences the model may emit into real characters
+    return str
+      .replace(/\\n/g, '\n')
+      .replace(/\\t/g, '    ')
+      .replace(/\\r/g, '')
+      .replace(/\\"/g, '"');
+  }
+
+  function renderPanels(data) {
+    // Overview
+    const overviewEl = document.getElementById('overview-body');
+    overviewEl.innerHTML = '';
+    const overview = unescape(data.overview || 'No overview returned.');
+    const sentences = overview
+      .split(/\n|(?<=[.!?])\s+/)
+      .map(s => s.trim())
+      .filter(Boolean);
+    const ul = document.createElement('ul');
+    ul.style.cssText = 'list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:10px;';
+    sentences.forEach(sentence => {
+      const li = document.createElement('li');
+      li.style.cssText = 'display:flex; gap:10px; align-items:flex-start; line-height:1.6;';
+      const dot = document.createElement('span');
+      dot.textContent = '▸';
+      dot.style.cssText = 'color:var(--unity-blue); flex-shrink:0; margin-top:2px; font-size:11px;';
+      const text = document.createElement('span');
+      text.textContent = sentence;
+      li.appendChild(dot);
+      li.appendChild(text);
+      ul.appendChild(li);
+    });
+    overviewEl.appendChild(ul);
+
+    // Code — unescape and set as text content inside <pre> so whitespace is preserved
+    const codeBody = document.getElementById('code-body');
+    codeBody.innerHTML = '';
+    const codePre = document.createElement('pre');
+    const codeText = unescape(data.code || '// No code example returned.');
+    codePre.textContent = codeText;
+    codeBody.appendChild(codePre);
+
+    // Directory — unescape then split by newline or comma into path chips
+    const dirBody = document.getElementById('dir-body');
+    dirBody.innerHTML = '';
+    const dirText = unescape(data.directory || '');
+    const paths = dirText.split(/\n|,/).map(s => s.trim()).filter(Boolean);
+    if (paths.length === 0) {
+      dirBody.innerHTML = '<div class="panel-empty">No directory info returned.</div>';
+    } else {
+      paths.forEach(path => {
+        const div = document.createElement('div');
+        div.className = 'dir-path';
+        div.textContent = path;
+        dirBody.appendChild(div);
+      });
+    }
+  }
+
+  async function submit() {
+    const question = input.value.trim();
+    if (!question) return;
+
+    input.value = '';
+    input.style.height = 'auto';
+    sendBtn.disabled = true;
+    setLoading();
+
+    try {
+      const response = await fetch('/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question })
+      });
+
+      const data = await response.json();
+
+      if (data.error) {
+        document.getElementById('overview-body').textContent = '⚠️ ' + data.error;
+      } else {
+        renderPanels(data);
+      }
+
+    } catch (err) {
+      document.getElementById('overview-body').textContent = '⚠️ Error: ' + err.message;
+    } finally {
+      sendBtn.disabled = false;
+      input.focus();
+    }
+  }
+</script>
+</body>
+</html>
